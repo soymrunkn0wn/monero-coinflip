@@ -1821,6 +1821,7 @@ dependencies = [
  "dioxus",
  "dioxus-router",
  "dioxus-ssr",
+ "futures",
  "jsonwebtoken",
  "monero 0.19.0",
  "monero-rpc",

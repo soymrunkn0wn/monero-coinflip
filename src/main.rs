@@ -1,12 +1,17 @@
 mod db;
+mod middlewares;
 mod models;
 mod routes;
 use crate::db::connect_to_mongo;
-use crate::models::{Game, Transaction, User};
+use crate::middlewares::auth::auth_middleware;
+
 use crate::routes::auth::auth_routes;
+use crate::routes::games::game_routes;
+
 use axum::{Router, response::Html, routing::get};
 use dioxus::prelude::*;
 use dioxus_core::NoOpMutations;
+
 use mongodb::Database;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -39,16 +44,6 @@ async fn home() -> Html<String> {
     Html(format!("<!DOCTYPE html><html>{}</html>", buffer))
 }
 
-async fn lobby() -> Html<String> {
-    let mut renderer = dioxus_ssr::Renderer::new();
-    let mut buffer = String::new();
-    let mut vdom = VirtualDom::new(app);
-    let mut mutations = NoOpMutations;
-    vdom.rebuild(&mut mutations);
-    renderer.render_to(&mut buffer, &vdom).unwrap();
-    Html(format!("<!DOCTYPE html><html>{}</html>", buffer))
-}
-
 #[derive(Clone)]
 struct AppState {
     db: Arc<Database>,
@@ -63,14 +58,19 @@ async fn main() {
 
     let state = AppState { db: Arc::new(db) };
 
+    let protected_api = Router::new()
+        .merge(game_routes())
+        .layer(axum::middleware::from_fn(auth_middleware));
+
+    let api_router = Router::new().merge(auth_routes()).merge(protected_api);
+
     let app = Router::new()
         .route("/", get(home))
-        .route("/lobby", get(lobby))
+        .nest("/api", api_router)
         .nest_service(
             "/assets",
             axum::routing::get_service(ServeDir::new("assets")),
         )
-        .merge(auth_routes())
         .with_state(state);
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();

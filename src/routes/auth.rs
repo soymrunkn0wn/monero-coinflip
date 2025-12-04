@@ -141,6 +141,6 @@ async fn login(State(state): State<AppState>, Json(req): Json<LoginRequest>) -> 
 
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
-        .route("/api/register", post(register))
-        .route("/api/login", post(login))
+        .route("/register", post(register))
+        .route("/login", post(login))
 }
