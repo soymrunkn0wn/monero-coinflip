@@ -1,0 +1,26 @@
+[package]
+name = "monero-coinflip"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+argon2 = "0.5.3"
+axum = "0.7.5"
+chrono = "0.4.42"
+dioxus = "0.5.6"
+dioxus-router = "0.5.6"
+dioxus-ssr = "0.5.6"
+jsonwebtoken = "9.3.0"
+monero = "0.19.0"
+monero-rpc = "0.5.0"
+mongodb = "2.8.0"
+password-hash = "0.5.0"
+rand = "0.8.5"
+rand_core = "0.9.3"
+rust_decimal = "1.35.0"
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.37.0", features = ["full"] }
+tower-http = { version = "0.6.7", features = ["fs"] }
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
