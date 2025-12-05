@@ -1,0 +1,58 @@
+2025-12-05 15:50:50.091	    7395a2777c00	INFO	logging	contrib/epee/src/mlog.cpp:274	New log categories: *:WARNING,net:FATAL,net.http:FATAL,net.ssl:FATAL,net.p2p:FATAL,net.cn:FATAL,daemon.rpc:FATAL,global:INFO,verify:FATAL,serialization:FATAL,daemon.rpc.payment:ERROR,stacktrace:INFO,logging:INFO,msgwriter:INFO
+2025-12-05 15:50:50.091	    7395a2777c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	This is the RPC monero wallet. It needs to connect to a monero
+2025-12-05 15:50:50.091	    7395a2777c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	daemon to work correctly.
+2025-12-05 15:50:50.091	    7395a2777c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	Monero 'Fluorine Fermi' (v0.18.4.4-release)
+2025-12-05 15:50:50.091	    7395a2777c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	Logging to monero-wallet-rpc.log
+2025-12-05 15:50:50.092	    7395a2777c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4909	Loading wallet...
+2025-12-05 15:50:55.986	    7395a2777c00	WARNING	wallet.wallet2	src/wallet/wallet2.cpp:6499	Loaded wallet keys file, with public address: 9zWeygiuXcubJ7rszyHHvtHZQfR3cChcdM8er2j6jCEqcoUZSqc1aTZAVi6TfMHuGg2SBMYAPusCue4M7Qgm8iL9QZ39Zcs
+2025-12-05 15:50:56.450	    7395a2777c00	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:3964	Blocks start before blockchain offset: 0 1450000
+2025-12-05 15:50:56.553	    7395a2777c00	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:3261	!m_blockchain.is_in_bounds(current_index). THROW EXCEPTION: error::out_of_hashchain_bounds_error
+2025-12-05 15:50:58.448	    7395a2777c00	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:4207	(m_blockchain.size() == stop_height || (m_blockchain.size() == 1 && stop_height == 0) ? false : true). THROW EXCEPTION: error::wallet_internal_error
+2025-12-05 15:50:58.450	    7395a2777c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:367	RPC username/password is stored in file monero-wallet-rpc.18083.login
+2025-12-05 15:50:58.450	    7395a2777c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:422	Background mining not enabled. Run "set setup-background-mining 1" in monero-wallet-cli to change.
+2025-12-05 15:50:58.450	    7395a2777c00	INFO	global	contrib/epee/include/net/http_server_impl_base.h:94	Binding on 127.0.0.1 (IPv4):18083
+2025-12-05 15:50:59.106	    7395a2777c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4981	Starting wallet RPC server
+2025-12-05 15:50:59.338	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:3964	Blocks start before blockchain offset: 0 1450000
+2025-12-05 15:50:59.613	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:3261	!m_blockchain.is_in_bounds(current_index). THROW EXCEPTION: error::out_of_hashchain_bounds_error
+2025-12-05 15:51:01.530	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:4207	(m_blockchain.size() == stop_height || (m_blockchain.size() == 1 && stop_height == 0) ? false : true). THROW EXCEPTION: error::wallet_internal_error
+2025-12-05 15:51:17.586	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4991	Stopped wallet RPC server
+2025-12-05 15:51:17.586	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4994	Saving wallet...
+2025-12-05 15:51:17.703	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4996	Successfully saved
+2025-12-05 16:03:15.763	    7a0641302c00	INFO	logging	contrib/epee/src/mlog.cpp:274	New log categories: *:WARNING,net:FATAL,net.http:FATAL,net.ssl:FATAL,net.p2p:FATAL,net.cn:FATAL,daemon.rpc:FATAL,global:INFO,verify:FATAL,serialization:FATAL,daemon.rpc.payment:ERROR,stacktrace:INFO,logging:INFO,msgwriter:INFO
+2025-12-05 16:03:15.763	    7a0641302c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	This is the RPC monero wallet. It needs to connect to a monero
+2025-12-05 16:03:15.763	    7a0641302c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	daemon to work correctly.
+2025-12-05 16:03:15.763	    7a0641302c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	Monero 'Fluorine Fermi' (v0.18.4.4-release)
+2025-12-05 16:03:15.763	    7a0641302c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	Logging to monero-wallet-rpc.log
+2025-12-05 16:03:15.764	    7a0641302c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4909	Loading wallet...
+2025-12-05 16:03:19.897	    7a0641302c00	WARNING	wallet.wallet2	src/wallet/wallet2.cpp:6499	Loaded wallet keys file, with public address: 9zWeygiuXcubJ7rszyHHvtHZQfR3cChcdM8er2j6jCEqcoUZSqc1aTZAVi6TfMHuGg2SBMYAPusCue4M7Qgm8iL9QZ39Zcs
+2025-12-05 16:03:20.586	    7a0641302c00	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:15996	!r. THROW EXCEPTION: tools::error::no_connection_to_daemon
+2025-12-05 16:03:20.587	    7a0641302c00	ERROR	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4957	Initial refresh failed: no connection to daemon
+2025-12-05 16:03:20.587	    7a0641302c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:367	RPC username/password is stored in file monero-wallet-rpc.18083.login
+2025-12-05 16:03:20.587	    7a0641302c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:422	Background mining not enabled. Run "set setup-background-mining 1" in monero-wallet-cli to change.
+2025-12-05 16:03:20.587	    7a0641302c00	INFO	global	contrib/epee/include/net/http_server_impl_base.h:94	Binding on 127.0.0.1 (IPv4):18083
+2025-12-05 16:03:21.594	    7a0641302c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4981	Starting wallet RPC server
+2025-12-05 16:03:22.165	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:15996	!r. THROW EXCEPTION: tools::error::no_connection_to_daemon
+2025-12-05 16:03:22.165	[RPC0]	ERROR	wallet.rpc	src/wallet/wallet_rpc_server.cpp:236	Exception at while refreshing, what=no connection to daemon
+2025-12-05 16:03:42.460	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:15996	!r. THROW EXCEPTION: tools::error::no_connection_to_daemon
+2025-12-05 16:03:42.460	[RPC0]	ERROR	wallet.rpc	src/wallet/wallet_rpc_server.cpp:236	Exception at while refreshing, what=no connection to daemon
+2025-12-05 16:03:52.512	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4991	Stopped wallet RPC server
+2025-12-05 16:03:52.512	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4994	Saving wallet...
+2025-12-05 16:03:52.517	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4996	Successfully saved
+2025-12-05 16:04:31.414	    7e89862a6c00	INFO	logging	contrib/epee/src/mlog.cpp:274	New log categories: *:WARNING,net:FATAL,net.http:FATAL,net.ssl:FATAL,net.p2p:FATAL,net.cn:FATAL,daemon.rpc:FATAL,global:INFO,verify:FATAL,serialization:FATAL,daemon.rpc.payment:ERROR,stacktrace:INFO,logging:INFO,msgwriter:INFO
+2025-12-05 16:04:31.414	    7e89862a6c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	This is the RPC monero wallet. It needs to connect to a monero
+2025-12-05 16:04:31.414	    7e89862a6c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	daemon to work correctly.
+2025-12-05 16:04:31.414	    7e89862a6c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	Monero 'Fluorine Fermi' (v0.18.4.4-release)
+2025-12-05 16:04:31.414	    7e89862a6c00	INFO	msgwriter	src/common/scoped_message_writer.h:102	Logging to monero-wallet-rpc.log
+2025-12-05 16:04:31.415	    7e89862a6c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4909	Loading wallet...
+2025-12-05 16:04:33.671	    7e89862a6c00	WARNING	wallet.wallet2	src/wallet/wallet2.cpp:6499	Loaded wallet keys file, with public address: 9zWeygiuXcubJ7rszyHHvtHZQfR3cChcdM8er2j6jCEqcoUZSqc1aTZAVi6TfMHuGg2SBMYAPusCue4M7Qgm8iL9QZ39Zcs
+2025-12-05 16:04:33.690	    7e89862a6c00	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:15996	!r. THROW EXCEPTION: tools::error::no_connection_to_daemon
+2025-12-05 16:04:33.690	    7e89862a6c00	ERROR	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4957	Initial refresh failed: no connection to daemon
+2025-12-05 16:04:33.690	    7e89862a6c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:367	RPC username/password is stored in file monero-wallet-rpc.18083.login
+2025-12-05 16:04:33.690	    7e89862a6c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:422	Background mining not enabled. Run "set setup-background-mining 1" in monero-wallet-cli to change.
+2025-12-05 16:04:33.690	    7e89862a6c00	INFO	global	contrib/epee/include/net/http_server_impl_base.h:94	Binding on 127.0.0.1 (IPv4):18083
+2025-12-05 16:04:34.883	    7e89862a6c00	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4981	Starting wallet RPC server
+2025-12-05 16:04:35.084	[RPC0]	ERROR	wallet.wallet2	src/wallet/wallet2.cpp:15996	!r. THROW EXCEPTION: tools::error::no_connection_to_daemon
+2025-12-05 16:04:35.084	[RPC0]	ERROR	wallet.rpc	src/wallet/wallet_rpc_server.cpp:236	Exception at while refreshing, what=no connection to daemon
+2025-12-05 16:04:38.039	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4991	Stopped wallet RPC server
+2025-12-05 16:04:38.039	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4994	Saving wallet...
+2025-12-05 16:04:38.042	[SRV_MAIN]	WARNING	wallet.rpc	src/wallet/wallet_rpc_server.cpp:4996	Successfully saved

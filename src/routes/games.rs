@@ -18,8 +18,8 @@ use crate::AppState;
 use crate::middlewares::auth::UserId;
 use crate::models::{Game, User};
 
-const MIN_WAGER: f64 = 0.001;
-const PLATFORM_FEE_RATE: f64 = 0.02; // 2%
+const MIN_WAGER: f64 = 0.001; // Minimum wager amount = $0.40
+const PLATFORM_FEE_RATE: f64 = 0.01; // Platform takes 1% fee
 
 #[derive(Deserialize)]
 struct CreateGameRequest {
@@ -67,16 +67,17 @@ async fn create_game(
         }
     };
 
-    let balance_decimal = Decimal::from_str(&user.balance.to_string()).unwrap();
-    if balance_decimal < wager_decimal {
+    // Simulate balance check (TODO: Monitor on-chain deposits)
+    // For now, assume balance is sufficient or check DB
+    if Decimal::from_str(&user.balance.to_string()).unwrap() < wager_decimal {
         return (StatusCode::BAD_REQUEST, "Insufficient balance".to_string()).into_response();
     }
 
-    // Deduct wager
-    user.balance = Decimal128::from_str(&(balance_decimal - wager_decimal).to_string()).unwrap();
-    let _ = users
-        .replace_one(mongodb::bson::doc! { "_id": user_id_obj }, &user, None)
-        .await;
+    // Simulate transfer from user address to platform (escrow)
+    println!(
+        "Simulating wager transfer: {} XMR from {} to platform",
+        wager_decimal, user.wallet_address
+    );
 
     // Create game
     let now = DateTime::now();
@@ -158,6 +159,7 @@ async fn join_game(
     let db = &state.db;
     let users: Collection<User> = db.collection("users");
     let games: Collection<Game> = db.collection("games");
+    let platform_address = &state.platform_address;
 
     let game_id_obj = match ObjectId::parse_str(&game_id) {
         Ok(id) => id,
@@ -211,21 +213,17 @@ async fn join_game(
                 .into_response();
         }
     };
-    let opponent_balance = Decimal::from_str(&opponent.balance.to_string()).unwrap();
-    if opponent_balance < wager_decimal {
+    // Simulate balance check (TODO: Monitor on-chain deposits)
+    // For now, assume balance is sufficient or check DB
+    if Decimal::from_str(&opponent.balance.to_string()).unwrap() < wager_decimal {
         return (StatusCode::BAD_REQUEST, "Insufficient balance".to_string()).into_response();
     }
 
-    // Deduct wager from opponent
-    opponent.balance =
-        Decimal128::from_str(&(opponent_balance - wager_decimal).to_string()).unwrap();
-    let _ = users
-        .replace_one(
-            mongodb::bson::doc! { "_id": opponent_id_obj },
-            &opponent,
-            None,
-        )
-        .await;
+    // Simulate transfer from opponent address to platform (escrow)
+    println!(
+        "Simulating wager transfer: {} XMR from {} to platform",
+        wager_decimal, opponent.wallet_address
+    );
 
     // Update game
     game.opponent_id = Some(opponent_id_obj);
@@ -257,10 +255,48 @@ async fn join_game(
     let fee = total_wager * Decimal::from_f64(PLATFORM_FEE_RATE).unwrap();
     let payout = total_wager - fee;
 
-    // Update winner's balance
-    let winner_filter = mongodb::bson::doc! { "_id": winner_id };
-    let winner_update = mongodb::bson::doc! { "$inc": { "balance": Decimal128::from_str(&payout.to_string()).unwrap() } };
-    let _ = users.update_one(winner_filter, winner_update, None).await;
+    // Fetch user addresses for transfers
+    let creator_addr = match users
+        .find_one(mongodb::bson::doc! { "_id": game.creator_id }, None)
+        .await
+    {
+        Ok(Some(u)) => u.wallet_address,
+        _ => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Creator not found".to_string(),
+            )
+                .into_response();
+        }
+    };
+    let opponent_addr = match users
+        .find_one(mongodb::bson::doc! { "_id": opponent_id_obj }, None)
+        .await
+    {
+        Ok(Some(u)) => u.wallet_address,
+        _ => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Opponent not found".to_string(),
+            )
+                .into_response();
+        }
+    };
+    let winner_addr = if winner_id == game.creator_id {
+        creator_addr
+    } else {
+        opponent_addr
+    };
+
+    // Simulate transfers (TODO: Use RPC to perform real on-chain transfers)
+    println!(
+        "Simulating transfer: fee {} XMR to platform {}",
+        fee, platform_address
+    );
+    println!(
+        "Simulating transfer: payout {} XMR to winner {}",
+        payout, winner_addr
+    );
 
     // Update game
     game.status = "completed".to_string();

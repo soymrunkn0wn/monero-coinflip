@@ -20,6 +20,8 @@ use crate::models::Game;
 use crate::routes::games::OpenGame;
 use axum::extract::State;
 use futures::TryStreamExt;
+use monero_rpc::{RpcClient, WalletClient};
+use std::env;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
@@ -122,6 +124,8 @@ async fn lobby(State(state): State<AppState>) -> Html<String> {
 #[derive(Clone)]
 struct AppState {
     db: Arc<Database>,
+    wallet_rpc: Arc<WalletClient>,
+    platform_address: String,
 }
 
 #[tokio::main]
@@ -131,7 +135,20 @@ async fn main() {
         .expect("Failed to connect to MongoDB");
     println!("Successfully connected to MongoDB!");
 
-    let state = AppState { db: Arc::new(db) };
+    let platform_address = env::var("PLATFORM_WALLET_ADDRESS")
+        .unwrap_or_else(|_| "4ABC...your_default_platform_address".to_string());
+    println!("Platform wallet address for fees: {}", platform_address);
+
+    let rpc_url =
+        env::var("MONERO_WALLET_RPC_URL").unwrap_or_else(|_| "http://localhost:18081".to_string());
+    println!("Using Monero Wallet RPC URL: {}", rpc_url);
+    let client = RpcClient::new(rpc_url).expect("Failed to create RPC client");
+    let wallet_rpc = Arc::new(client.wallet());
+    let state = AppState {
+        db: Arc::new(db),
+        wallet_rpc,
+        platform_address,
+    };
 
     let protected_api = Router::new()
         .merge(game_routes())
