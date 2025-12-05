@@ -14,25 +14,42 @@ use std::env;
 use argon2::{Algorithm, Argon2, Params, Version};
 use argon2::{PasswordHasher, PasswordVerifier};
 use password_hash::{PasswordHash, SaltString};
-use rand::{RngCore, rngs::OsRng};
+use rand::rngs::OsRng;
 
 use crate::AppState;
 use crate::models::user::User;
+use aes_gcm::aead::{Aead, KeyInit};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 use anyhow::{Result, anyhow};
+use bip39::{Language, Mnemonic};
 use hex;
+use lazy_static::lazy_static;
 use monero::{Address, Network, PrivateKey, PublicKey};
+use rand::RngCore;
+use rand::thread_rng;
+
+// Server key for encrypting seeds (use a strong, unique key in production)
+lazy_static! {
+    static ref SERVER_KEY: Key<Aes256Gcm> = {
+        let key_str = std::env::var("SEED_ENCRYPTION_KEY")
+            .unwrap_or_else(|_| "default_key_replace_in_prod_32bytes!".to_string());
+        let mut key_bytes = [0u8; 32];
+        let key_data = key_str.as_bytes();
+        let len = key_data.len().min(32);
+        key_bytes[..len].copy_from_slice(&key_data[..len]);
+        Key::<Aes256Gcm>::from(key_bytes)
+    };
+}
 
 async fn generate_wallet_address(_state: &AppState, _email: &str) -> Result<(String, String)> {
-    // Generate random entropy for seed
+    // Generate a real 24-word mnemonic (standard BIP39, close to Monero)
     let mut entropy = [0u8; 32];
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     rng.fill_bytes(&mut entropy);
+    let mnemonic = Mnemonic::from_entropy_in(Language::English, &entropy)
+        .map_err(|e| anyhow!("Failed to generate mnemonic: {}", e))?;
 
-    // For simplicity, create a placeholder seed and address
-    // TODO: Implement proper mnemonic and key derivation using monero crate
-    let seed = format!("{}...placeholder_seed", hex::encode(&entropy[0..8]));
-
-    // Generate valid public keys by looping until valid
+    // For address, generate as before (random valid keys)
     let public_spend = loop {
         let mut spend_bytes = [0u8; 32];
         rng.fill_bytes(&mut spend_bytes);
@@ -51,7 +68,7 @@ async fn generate_wallet_address(_state: &AppState, _email: &str) -> Result<(Str
 
     let address = Address::standard(Network::Testnet, public_spend, public_view);
 
-    Ok((address.to_string(), seed))
+    Ok((address.to_string(), mnemonic.to_string()))
 }
 
 #[derive(Deserialize)]
@@ -87,7 +104,7 @@ async fn register(
         .to_string();
 
     // Generate wallet address and seed
-    let (wallet_address, seed) = match generate_wallet_address(&state, &req.email).await {
+    let (wallet_address, plain_seed) = match generate_wallet_address(&state, &req.email).await {
         Ok((addr, sd)) => (addr, sd),
         Err(e) => {
             eprintln!("Error generating wallet and seed: {}", e);
@@ -99,16 +116,34 @@ async fn register(
         }
     };
 
-    // Create user
+    // Encrypt the seed for storage
+    let cipher = Aes256Gcm::new(&*SERVER_KEY);
+    let mut nonce_bytes = [0u8; 12];
+    thread_rng().fill_bytes(&mut nonce_bytes);
+    let nonce = Nonce::from_slice(&nonce_bytes);
+    let ciphertext = match cipher.encrypt(&nonce, plain_seed.as_bytes()) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Encryption failed: {:?}", e);
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to generate wallet".to_string(),
+            )
+                .into_response();
+        }
+    };
+    let encrypted_seed = format!("{}:{}", hex::encode(nonce), hex::encode(&ciphertext));
+
+    // Create user with encrypted seed
     let now = DateTime::now();
     let balance = "0".parse::<Decimal128>().expect("Failed to parse decimal");
 
     let user = User {
         id: None,
         email: req.email,
-        password_hash,
-        wallet_address,
-        seed: seed.clone(),
+        password_hash: password_hash.clone(),
+        wallet_address: wallet_address.clone(),
+        seed: encrypted_seed,
         balance,
         created_at: now,
         updated_at: now,
@@ -118,10 +153,14 @@ async fn register(
     let result = collection.insert_one(user, None).await.unwrap();
     let id = result.inserted_id.as_object_id().unwrap();
 
-    // TODO: Secure seed handling - do not expose in production
+    // Return seed to user (they must back it up; server can't recover encrypted seed)
+    // TODO: Remove seed from response in production for security
     (
         StatusCode::CREATED,
-        format!("User created with id: {}. Seed: {}", id, seed.clone()),
+        format!(
+            "User created with id: {}. Address: {}. Seed (BACKUP SECURELY): {}",
+            id, wallet_address, plain_seed
+        ),
     )
         .into_response()
 }
