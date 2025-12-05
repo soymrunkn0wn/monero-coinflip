@@ -139,6 +139,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(home))
+        .route("/lobby", get(lobby))
         .merge(auth_routes())
         .merge(protected_api)
         .nest_service(
