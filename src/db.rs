@@ -6,6 +6,7 @@ pub async fn connect_to_mongo() -> Result<mongodb::Database> {
     let uri = env::var("MONGODB_URI")
         .unwrap_or_else(|_| "mongodb://localhost:27017/coinflip_db".to_string());
 
+    println!("Using MongoDB URI: {}", uri);
     let client_options = ClientOptions::parse(&uri).await?;
     let client = Client::with_options(client_options)?;
 

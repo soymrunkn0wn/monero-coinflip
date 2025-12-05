@@ -55,10 +55,16 @@ async fn create_game(
     let mut user = match users
         .find_one(mongodb::bson::doc! { "_id": user_id_obj }, None)
         .await
-        .unwrap()
     {
-        Some(u) => u,
-        None => return (StatusCode::NOT_FOUND, "User not found".to_string()).into_response(),
+        Ok(Some(u)) => u,
+        Ok(None) => return (StatusCode::NOT_FOUND, "User not found".to_string()).into_response(),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response();
+        }
     };
 
     let balance_decimal = Decimal::from_str(&user.balance.to_string()).unwrap();
@@ -87,18 +93,36 @@ async fn create_game(
         updated_at: now,
     };
 
-    let result = games.insert_one(game, None).await.unwrap();
-    let id = result.inserted_id.as_object_id().unwrap();
+    let result = match games.insert_one(game, None).await {
+        Ok(res) => res,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response();
+        }
+    };
+    let id = match result.inserted_id.as_object_id() {
+        Some(oid) => oid,
+        None => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to get inserted ID".to_string(),
+            )
+                .into_response();
+        }
+    };
 
     (StatusCode::CREATED, Json(id.to_hex())).into_response()
 }
 
-#[derive(Serialize)]
-struct OpenGame {
-    id: String,
-    creator: String, // Simplified, could expand
-    wager: String,
-    created_at: DateTime,
+#[derive(Serialize, Clone)]
+pub struct OpenGame {
+    pub id: String,
+    pub creator: String, // Simplified, could expand
+    pub wager: String,
+    pub created_at: DateTime,
 }
 
 async fn list_open_games(State(state): State<AppState>) -> impl IntoResponse {
@@ -142,10 +166,16 @@ async fn join_game(
     let mut game = match games
         .find_one(mongodb::bson::doc! { "_id": game_id_obj }, None)
         .await
-        .unwrap()
     {
-        Some(g) => g,
-        None => return (StatusCode::NOT_FOUND, "Game not found".to_string()).into_response(),
+        Ok(Some(g)) => g,
+        Ok(None) => return (StatusCode::NOT_FOUND, "Game not found".to_string()).into_response(),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response();
+        }
     };
 
     if game.status != "open" {
@@ -170,10 +200,16 @@ async fn join_game(
     let mut opponent = match users
         .find_one(mongodb::bson::doc! { "_id": opponent_id_obj }, None)
         .await
-        .unwrap()
     {
-        Some(u) => u,
-        None => return (StatusCode::NOT_FOUND, "User not found".to_string()).into_response(),
+        Ok(Some(u)) => u,
+        Ok(None) => return (StatusCode::NOT_FOUND, "User not found".to_string()).into_response(),
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+                .into_response();
+        }
     };
     let opponent_balance = Decimal::from_str(&opponent.balance.to_string()).unwrap();
     if opponent_balance < wager_decimal {
@@ -194,9 +230,16 @@ async fn join_game(
     // Update game
     game.opponent_id = Some(opponent_id_obj);
     game.status = "active".to_string();
-    let _ = games
+    if let Err(e) = games
         .replace_one(mongodb::bson::doc! { "_id": game_id_obj }, &game, None)
-        .await;
+        .await
+    {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+            .into_response();
+    }
 
     // Execute coinflip
     let outcome = if OsRng.gen_bool(0.5) {
