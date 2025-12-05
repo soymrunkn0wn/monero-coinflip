@@ -16,7 +16,7 @@ use mongodb::options::FindOptions;
 use mongodb::{Collection, Database};
 use rust_decimal::{Decimal, prelude::FromStr};
 
-use crate::models::Game;
+use crate::models::{Game, User};
 use crate::routes::games::OpenGame;
 use axum::extract::State;
 use futures::TryStreamExt;
@@ -150,6 +150,12 @@ async fn main() {
         platform_address,
     };
 
+    // Spawn deposit monitoring task
+    let state_clone = Arc::new(state.clone());
+    tokio::spawn(async move {
+        deposit_monitor_task(state_clone).await;
+    });
+
     let protected_api = Router::new()
         .merge(game_routes())
         .layer(axum::middleware::from_fn(auth_middleware));
@@ -167,4 +173,29 @@ async fn main() {
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+// Periodic task to monitor user deposits
+async fn deposit_monitor_task(state: Arc<AppState>) {
+    loop {
+        // Fetch all users
+        let db = &state.db;
+        let users_collection = db.collection::<User>("users");
+        let mut cursor = users_collection
+            .find(mongodb::bson::doc! {}, None)
+            .await
+            .unwrap();
+
+        while let Ok(Some(user)) = cursor.try_next().await {
+            // TODO: Query blockchain for incoming transfers to user.wallet_address
+            // If confirmed (e.g., 10 blocks), update user.balance in DB
+            // Example: Use RPC get_transfers to check user address
+            println!(
+                "Monitoring deposits for user {} at {}",
+                user.email, user.wallet_address
+            );
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(60)).await; // Check every 60 seconds
+    }
 }

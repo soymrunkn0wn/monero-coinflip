@@ -1,9 +1,9 @@
 use axum::{
     Router,
-    extract::{Json, State},
+    extract::{Extension, Json, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
 };
 use jsonwebtoken::{EncodingKey, Header, encode};
 use mongodb::Collection;
@@ -15,8 +15,12 @@ use argon2::{Algorithm, Argon2, Params, Version};
 use argon2::{PasswordHasher, PasswordVerifier};
 use password_hash::{PasswordHash, SaltString};
 use rand::rngs::OsRng;
+use rand::thread_rng;
+use std::str::FromStr;
 
 use crate::AppState;
+use crate::middlewares::auth::UserId;
+use crate::models::AdminBalance;
 use crate::models::user::User;
 use aes_gcm::aead::{Aead, KeyInit};
 use aes_gcm::{Aes256Gcm, Key, Nonce};
@@ -26,7 +30,7 @@ use hex;
 use lazy_static::lazy_static;
 use monero::{Address, Network, PrivateKey, PublicKey};
 use rand::RngCore;
-use rand::thread_rng;
+use rust_decimal::Decimal;
 
 // Server key for encrypting seeds (use a strong, unique key in production)
 lazy_static! {
@@ -155,12 +159,68 @@ async fn register(
 
     // Return seed to user (they must back it up; server can't recover encrypted seed)
     // TODO: Remove seed from response in production for security
+    // TODO: Secure seed handling - do not expose in production
     (
         StatusCode::CREATED,
         format!(
             "User created with id: {}. Address: {}. Seed (BACKUP SECURELY): {}",
             id, wallet_address, plain_seed
         ),
+    )
+        .into_response()
+}
+
+#[derive(Deserialize)]
+struct WithdrawalRequest {
+    amount: String,
+}
+
+async fn withdrawal(
+    State(state): State<AppState>,
+    Extension(user_id): Extension<UserId>,
+    Json(req): Json<WithdrawalRequest>,
+) -> impl IntoResponse {
+    let amount: Decimal = req.amount.parse().unwrap();
+
+    let db = &state.db;
+    let users = db.collection::<User>("users");
+    let user_id_obj = ObjectId::parse_str(&user_id.0).unwrap();
+    let mut user = match users
+        .find_one(mongodb::bson::doc! { "_id": user_id_obj }, None)
+        .await
+    {
+        Ok(Some(u)) => u,
+        _ => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "User not found".to_string(),
+            )
+                .into_response();
+        }
+    };
+
+    let user_balance_decimal: Decimal = user.balance.to_string().parse().unwrap();
+    if user_balance_decimal < amount {
+        return (StatusCode::BAD_REQUEST, "Insufficient balance".to_string()).into_response();
+    }
+
+    // Deduct balance
+    let new_balance = user_balance_decimal - amount;
+    user.balance = Decimal128::from_str(&new_balance.to_string()).unwrap();
+    users
+        .replace_one(mongodb::bson::doc! { "_id": user_id_obj }, &user, None)
+        .await
+        .unwrap();
+
+    // TODO: Transfer amount from escrow to user.wallet_address using RPC
+    println!(
+        "Simulating withdrawal: {} XMR to {}",
+        amount, user.wallet_address
+    );
+
+    (
+        StatusCode::OK,
+        format!("Withdrawal of {} XMR initiated", amount),
     )
         .into_response()
 }
@@ -222,8 +282,75 @@ async fn login(State(state): State<AppState>, Json(req): Json<LoginRequest>) -> 
     (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string()).into_response()
 }
 
+async fn admin_withdraw(
+    State(state): State<AppState>,
+    Json(_req): Json<()>, // Optional request
+) -> impl IntoResponse {
+    let db = &state.db;
+    let admin_collection = db.collection::<AdminBalance>("admin_balance");
+    let admin_balance = admin_collection
+        .find_one(mongodb::bson::doc! {}, None)
+        .await
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    let admin_balance_decimal: Decimal = admin_balance.balance.to_string().parse().unwrap();
+    if admin_balance_decimal == Decimal::from(0) {
+        return (
+            StatusCode::BAD_REQUEST,
+            "No admin balance to withdraw".to_string(),
+        )
+            .into_response();
+    }
+
+    let amount = admin_balance_decimal;
+
+    // Reset admin balance to 0
+    let mut admin_balance_zero = admin_balance.clone();
+    admin_balance_zero.balance = Decimal128::from_str("0").unwrap();
+    admin_collection
+        .replace_one(
+            mongodb::bson::doc! { "_id": admin_balance_zero.id },
+            &admin_balance_zero,
+            None,
+        )
+        .await
+        .unwrap();
+
+    // TODO: Transfer amount from escrow to platform_address using RPC
+    println!(
+        "Simulating admin withdrawal: {} XMR to {}",
+        amount, state.platform_address
+    );
+
+    (
+        StatusCode::OK,
+        format!("Admin withdrawal of {} XMR initiated", amount),
+    )
+        .into_response()
+}
+
+async fn get_admin_balance(State(state): State<AppState>) -> impl IntoResponse {
+    let db = &state.db;
+    let admin_collection = db.collection::<AdminBalance>("admin_balance");
+    let admin_balance = admin_collection
+        .find_one(mongodb::bson::doc! {}, None)
+        .await
+        .unwrap_or_default()
+        .unwrap_or_default();
+
+    (
+        StatusCode::OK,
+        format!("Current admin balance: {} XMR", admin_balance.balance),
+    )
+        .into_response()
+}
+
 pub fn auth_routes() -> Router<AppState> {
     Router::new()
         .route("/register", post(register))
         .route("/login", post(login))
+        .route("/withdraw", post(withdrawal))
+        .route("/admin/withdraw", post(admin_withdraw))
+        .route("/admin/balance", get(get_admin_balance))
 }

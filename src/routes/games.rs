@@ -16,7 +16,7 @@ use std::str::FromStr;
 
 use crate::AppState;
 use crate::middlewares::auth::UserId;
-use crate::models::{Game, User};
+use crate::models::{AdminBalance, Game, User};
 
 const MIN_WAGER: f64 = 0.001; // Minimum wager amount = $0.40
 const PLATFORM_FEE_RATE: f64 = 0.01; // Platform takes 1% fee
@@ -69,14 +69,34 @@ async fn create_game(
 
     // Simulate balance check (TODO: Monitor on-chain deposits)
     // For now, assume balance is sufficient or check DB
-    if Decimal::from_str(&user.balance.to_string()).unwrap() < wager_decimal {
+    let balance_decimal = Decimal::from_str(&user.balance.to_string()).unwrap();
+    if balance_decimal < wager_decimal {
         return (StatusCode::BAD_REQUEST, "Insufficient balance".to_string()).into_response();
+    }
+
+    // Deduct balance and update DB
+    let new_balance = balance_decimal - wager_decimal;
+    user.balance = Decimal128::from_str(&new_balance.to_string()).unwrap();
+    if let Err(e) = users
+        .replace_one(mongodb::bson::doc! { "_id": user_id_obj }, &user, None)
+        .await
+    {
+        eprintln!("Error updating creator balance: {}", e);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to update creator balance: {}", e),
+        )
+            .into_response();
     }
 
     // Simulate transfer from user address to platform (escrow)
     println!(
         "Simulating wager transfer: {} XMR from {} to platform",
         wager_decimal, user.wallet_address
+    );
+    println!(
+        "Creator balance after deduction: {} (deducted {})",
+        new_balance, wager_decimal
     );
 
     // Create game
@@ -225,6 +245,32 @@ async fn join_game(
         wager_decimal, opponent.wallet_address
     );
 
+    // Deduct opponent balance
+    let opponent_balance_decimal: Decimal = opponent.balance.to_string().parse().unwrap();
+    let new_opponent_balance = opponent_balance_decimal - wager_decimal;
+    opponent.balance = Decimal128::from_str(&new_opponent_balance.to_string()).unwrap();
+    if let Err(e) = users
+        .replace_one(
+            mongodb::bson::doc! { "_id": opponent_id_obj },
+            &opponent,
+            None,
+        )
+        .await
+    {
+        eprintln!("Error updating opponent balance: {}", e);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to update opponent balance: {}", e),
+        )
+            .into_response();
+    }
+
+    // Log balance deductions
+    println!(
+        "Opponent balance after: {} (deducted {})",
+        new_opponent_balance, wager_decimal
+    );
+
     // Update game
     game.opponent_id = Some(opponent_id_obj);
     game.status = "active".to_string();
@@ -288,14 +334,42 @@ async fn join_game(
         opponent_addr
     };
 
-    // Simulate transfers (TODO: Use RPC to perform real on-chain transfers)
+    // Update winner's DB balance for payout
+    let winner_filter = mongodb::bson::doc! { "_id": winner_id };
+    let winner_update = mongodb::bson::doc! { "$inc": { "balance": Decimal128::from_str(&payout.to_string()).unwrap() } };
+    if let Err(e) = users.update_one(winner_filter, winner_update, None).await {
+        eprintln!("Error updating winner balance: {}", e);
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to update winner balance: {}", e),
+        )
+            .into_response();
+    }
+    println!("Winner payout: {} XMR added to balance", payout);
+
+    // Accumulate fee in admin balance
+    let admin_collection = state.db.collection::<AdminBalance>("admin_balance");
+    let mut admin_balance = admin_collection
+        .find_one(mongodb::bson::doc! {}, None)
+        .await
+        .unwrap_or_default()
+        .unwrap_or_default();
+    let fee_decimal = Decimal::from_f64(PLATFORM_FEE_RATE).unwrap() * total_wager;
+    let admin_balance_decimal: Decimal = admin_balance.balance.to_string().parse().unwrap();
+    admin_balance.balance =
+        Decimal128::from_str(&(admin_balance_decimal + fee_decimal).to_string()).unwrap();
+    admin_collection
+        .replace_one(
+            mongodb::bson::doc! { "_id": admin_balance.id },
+            &admin_balance,
+            None,
+        )
+        .await
+        .unwrap();
     println!(
-        "Simulating transfer: fee {} XMR to platform {}",
-        fee, platform_address
-    );
-    println!(
-        "Simulating transfer: payout {} XMR to winner {}",
-        payout, winner_addr
+        "Platform fee accumulated: {} XMR (total admin balance: {})",
+        fee_decimal,
+        admin_balance_decimal + fee_decimal
     );
 
     // Update game
